@@ -6,6 +6,10 @@ namespace CoffeeMachineAPI.Data;
 
 public class ApplicationDbContext : DbContext
 {
+    public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) 
+        : base(options)
+    { }
+
     public DbSet<CupSize> CupSizes { get; set; }
     public DbSet<CupStock> CupStockes { get; set; }
     public DbSet<Drink> Drinks { get; set; }

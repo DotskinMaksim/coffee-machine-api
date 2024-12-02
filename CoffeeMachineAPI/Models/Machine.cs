@@ -9,7 +9,7 @@ public class Machine
 
     [ForeignKey("Location")]
     public int LocationId { get; set; }
-    public SourceCodeInfo.Types.Location Location { get; set; }
+    public Location Location { get; set; }
 
     public string Status { get; set; }
 
