@@ -1,73 +1,84 @@
 using System;
 using System.ComponentModel.DataAnnotations;
+using System.Security.Cryptography;
 using Microsoft.AspNetCore.Cryptography.KeyDerivation;
 using System.Text;
 
-namespace CoffeeMachineAPI.Models;
-
-public class User
+namespace CoffeeMachineAPI.Models
 {
-    public int Id { get; set; }
-
-    public string Email { get; set; }
-
-    public byte[] PasswordHash { get; set; }
-
-    public DateTime CreatedAt { get; set; } = DateTime.Now;
-
-    public bool IsAdmin { get; set; }
-
-    public void SetPassword(string password)
+    public class User
     {
-        byte[] salt = GenerateSalt();
-        PasswordHash = HashPassword(password, salt);
-    }
+        public int Id { get; set; }
 
-    public bool CheckPassword(string password)
-    {
-        byte[] salt = ExtractSalt(PasswordHash);
-        byte[] hash = HashPassword(password, salt);
-        return CompareHashes(PasswordHash, hash);
-    }
+        public string Email { get; set; }
 
-    private byte[] GenerateSalt()
-    {
-        var salt = new byte[16]; // 128-bit salt
-        using (var rng = new System.Security.Cryptography.RNGCryptoServiceProvider())
+        public string PasswordHash { get; set; }
+
+        public DateTime CreatedAt { get; set; } = DateTime.Now;
+
+        public bool IsAdmin { get; set; } = false;
+
+        public void SetPassword(string password)
         {
-            rng.GetBytes(salt);
+            if (string.IsNullOrWhiteSpace(password))
+            {
+                throw new ArgumentException("Password cannot be empty.");
+            }
+
+            if (!IsPasswordStrong(password))
+            {
+                throw new ArgumentException("Password must be at least 8 characters long and include an uppercase letter, a lowercase letter, a digit, and a special character.");
+            }
+
+            PasswordHash = HashPassword(password);
         }
 
-        return salt;
-    }
-
-    private byte[] HashPassword(string password, byte[] salt)
-    {
-        return KeyDerivation.Pbkdf2(
-            password: password,
-            salt: salt,
-            prf: KeyDerivationPrf.HMACSHA256,
-            iterationCount: 10000,
-            numBytesRequested: 256 / 8);
-    }
-
-    private byte[] ExtractSalt(byte[] hash)
-    {
-        byte[] salt = new byte[16];
-        Array.Copy(hash, 0, salt, 0, 16);
-        return salt;
-    }
-
-    private bool CompareHashes(byte[] hash1, byte[] hash2)
-    {
-        for (int i = 0; i < hash1.Length; i++)
+        public string HashPassword(string password)
         {
-            if (hash1[i] != hash2[i])
+            using (var sha256 = SHA256.Create())
             {
-                return false;
+                var hashedBytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(password));
+                return BitConverter.ToString(hashedBytes).Replace("-", "").ToLower();
             }
         }
 
-        return true;
+        public bool CheckPassword(string password)
+        {
+            if (string.IsNullOrWhiteSpace(password))
+            {
+                return false;
+            }
+            return HashPassword(password) == PasswordHash;
+        }
+
+        public static bool IsPasswordStrong(string password)
+        {
+            const int MinLength = 8;
+
+            bool hasUpperCase = false;
+            bool hasLowerCase = false;
+            bool hasDigit = false;
+            bool hasSpecialChar = false;
+
+            if (password.Length < MinLength)
+            {
+                return false;
+            }
+
+            foreach (char c in password)
+            {
+                if (char.IsUpper(c)) hasUpperCase = true;
+                else if (char.IsLower(c)) hasLowerCase = true;
+                else if (char.IsDigit(c)) hasDigit = true;
+                else if (!char.IsLetterOrDigit(c)) hasSpecialChar = true;
+
+                if (hasUpperCase && hasLowerCase && hasDigit && hasSpecialChar)
+                {
+                    return true;
+                }
+            }
+
+            return hasUpperCase && hasLowerCase && hasDigit && hasSpecialChar;
+        }
     }
 }

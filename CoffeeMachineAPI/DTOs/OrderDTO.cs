@@ -28,14 +28,7 @@ public class OrderWithItemsReadDTO
     public bool IsPaid { get; set; }
     public List<OrderItemReadDTO> OrderItems { get; set; } = new List<OrderItemReadDTO>();
 }
-public class OrderItemReadDTO
-{
-    public string DrinkName { get; set; }
-    public int Quantity { get; set; }
-    public int SugarLevel { get; set; }
-    public string CupSize { get; set; }
-    public decimal ItemPrice { get; set; }
-}
+
 
 public class OrderCreateDTO
 {

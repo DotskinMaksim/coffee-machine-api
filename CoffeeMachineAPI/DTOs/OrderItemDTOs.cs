@@ -4,6 +4,15 @@ using CoffeeMachineAPI.Models;
 
 namespace CoffeeMachineAPI.DTOs;
 
+
+public class OrderItemReadDTO
+{
+    public string DrinkName { get; set; }
+    public int Quantity { get; set; }
+    public int SugarLevel { get; set; }
+    public string CupSize { get; set; }
+    public decimal ItemPrice { get; set; }
+}
 public class OrderItemCreateDTO
 {
     [Required]

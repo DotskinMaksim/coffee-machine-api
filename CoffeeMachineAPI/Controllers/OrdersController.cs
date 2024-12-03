@@ -54,7 +54,7 @@ public class OrdersController : ControllerBase
     public async Task<ActionResult<IEnumerable<OrderWithItemsReadDTO>>> GetAllOrdersWithItems()
     {
         var orders = await _context.Orders
-            .Include(o => o.User)  // Загружаем данные о пользователе
+            .Include(o => o.User)  
             .ToListAsync();
 
         if (orders == null || !orders.Any())
