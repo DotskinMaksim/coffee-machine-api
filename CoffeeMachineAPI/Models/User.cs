@@ -9,7 +9,7 @@ public class User
 {
     public int Id { get; set; }
 
-    [EmailAddress] [StringLength(255)] public string Email { get; set; }
+    public string Email { get; set; }
 
     public byte[] PasswordHash { get; set; }
 

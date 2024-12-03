@@ -1,4 +1,5 @@
 using CoffeeMachineAPI.Data;
+using CoffeeMachineAPI.Services;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -17,6 +18,7 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
         ServerVersion.AutoDetect(builder.Configuration.GetConnectionString("DefaultConnection"))
     )
 );
+builder.Services.AddTransient<IImageUploadService, ImgbbImageUploadService>();
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
@@ -26,6 +28,7 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI(); // Swagger UI
 }
+
 
 app.UseHttpsRedirection();
 

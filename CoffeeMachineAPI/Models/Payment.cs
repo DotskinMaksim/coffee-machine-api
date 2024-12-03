@@ -13,7 +13,6 @@ public class Payment
 
     public DateTime Date { get; set; } = DateTime.Now;
 
-    [StringLength(50)]
     public string Result { get; set; }
 
     [ForeignKey("Order")]

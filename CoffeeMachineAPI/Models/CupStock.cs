@@ -7,7 +7,6 @@ public class CupStock
 {
     public int Id { get; set; }
 
-    [Range(0, int.MaxValue, ErrorMessage = "Amount must be a non-negative number.")]
     public int Amount { get; set; }
 
     [ForeignKey("CupSize")]

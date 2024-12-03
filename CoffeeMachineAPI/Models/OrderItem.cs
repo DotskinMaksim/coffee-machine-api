@@ -7,10 +7,8 @@ public class OrderItem
 {
     public int Id { get; set; }
 
-    [Range(0, 4, ErrorMessage = "Sugar level must be between 0 and 4.")]
     public int SugarLevel { get; set; }
 
-    [Range(1, 3, ErrorMessage = "Cannot order more than 3 drinks at a time.")]
     public int Quantity { get; set; }
 
     [ForeignKey("Drink")]

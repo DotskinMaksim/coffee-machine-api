@@ -15,7 +15,6 @@ public class Order
     public int UserId { get; set; }
     public User User { get; set; }
 
-    [Range(0, double.MaxValue, ErrorMessage = "Total Price must be a non-negative number.")]
     public decimal TotalPrice { get; set; }
 
     public bool IsPaid { get; set; }
