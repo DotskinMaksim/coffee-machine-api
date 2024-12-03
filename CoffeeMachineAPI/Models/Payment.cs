@@ -7,15 +7,25 @@ public class Payment
     public int Id { get; set; }
 
     private const decimal VATRate = 0.20m;
-    public decimal Subtotal { get; private set; }
+    
+    [Column(TypeName = "decimal(18,2)")]
+    public decimal Subtotal { get;  set; }
     public decimal VATAmount => Subtotal * VATRate;
-    public decimal Total => Subtotal + VATAmount;
+    
+    [Column(TypeName = "decimal(18,2)")]
+    public decimal Total { get; set; }
 
     public DateTime Date { get; set; } = DateTime.Now;
-
-    public string Result { get; set; }
+    public bool Success { get; set; } = false;
+    
+    public string Status { get; set; }
 
     [ForeignKey("Order")]
     public int OrderId { get; set; }
     public Order Order { get; set; }
+    
+    public void CalculateTotal()
+    {
+        this.Total = Subtotal + (Subtotal * VATRate);
+    }
 }

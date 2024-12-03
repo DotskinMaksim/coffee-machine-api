@@ -1,6 +1,6 @@
 namespace coffee_machine_api.Models
 {
-    public static class MachineStatus
+    public static class MachineStatuses
     {
         public static readonly string Idle = "Idle"; // Machine is on but not in use
         public static readonly string Brewing = "Brewing"; // Machine is currently brewing coffee
@@ -14,12 +14,8 @@ namespace coffee_machine_api.Models
         public static readonly string Descaling = "Descaling"; // Machine is performing descaling process
         public static readonly string ReadyToServe = "Ready To Serve"; // Machine is fully ready to serve
     }
-    public static class OrderStatus
-    {
-        public static readonly string Completed = "Completed"; 
-        public static readonly string Cancelled  = "Cancelled"; 
-        public static readonly string Failed  = "Failed";
-    }
+
+
 
     public static class PaymentType
     {
@@ -27,20 +23,29 @@ namespace coffee_machine_api.Models
         public static readonly string Card = "Card";
         public static readonly string Transfer = "Transfer";
     }
-    namespace coffee_machine_api.Models
+
+    public static class OrderStatuses
     {
-        public static class PaymentResult
-        {
-            public static readonly string Completed = "Completed";
-            public static readonly string InsufficientFunds = "Insufficient Funds";
-            public static readonly string Failed = "Failed";
-            public static readonly string Cancelled = "Cancelled";
-            public static readonly string Timeout = "Timeout";
-            public static readonly string Unauthorized = "Unauthorized";
-            public static readonly string CardExpired = "Card Expired";
-            public static readonly string NetworkError = "Network Error";
-            public static readonly string LimitExceeded = "Limit Exceeded";
-            public static readonly string Refunded = "Refunded";
-        }
+        public const string Pending = "Pending"; 
+        public const string Processing = "Processing"; 
+        public const string InPayment = "In the payment process"; 
+        public const string Completed = "Completed"; 
+        public const string Cancelled = "Cancelled"; 
+        public const string Failed = "Failed"; 
+        public const string OnHold = "OnHold"; 
+        public const string Refunded = "Refunded"; 
+        public const string PaymentError = "Payment error"; 
+
+    }
+
+    public static class PaymentStatuses
+    {
+        public const string Pending = "Pending";
+        public const string Completed = "Completed";
+        public const string Failed = "Failed";
+        public const string Cancelled = "Cancelled";
+        public const string Refunded = "Refunded";
+        public const string Authorized = "Authorized";
+        public const string PartiallyRefunded = "PartiallyRefunded";
     }
 }

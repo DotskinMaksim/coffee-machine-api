@@ -6,4 +6,7 @@ public class CupSize
     public string Name { get; set; } 
     public char Code { get; set; }
     public int VolumeInMl { get; set; }
+    
+    public decimal Multiplier { get; set; }
+
 }

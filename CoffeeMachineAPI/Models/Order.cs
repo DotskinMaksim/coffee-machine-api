@@ -9,13 +9,18 @@ public class Order
 
     public DateTime Date { get; set; } = DateTime.Now;
 
-    public bool Status { get; set; }
+    public string Status { get; set; }
 
     [ForeignKey("User")]
     public int UserId { get; set; }
     public User User { get; set; }
 
+    
+    [Column(TypeName = "decimal(18,2)")]
     public decimal TotalPrice { get; set; }
 
     public bool IsPaid { get; set; }
+    
+    public List<OrderItem> OrderItems { get; set; } = new List<OrderItem>();
+
 }

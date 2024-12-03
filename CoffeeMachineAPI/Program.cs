@@ -1,3 +1,5 @@
+using System.Net.Http.Headers;
+using CoffeeMachineAPI.Controllers;
 using CoffeeMachineAPI.Data;
 using CoffeeMachineAPI.Services;
 using Microsoft.EntityFrameworkCore;
@@ -18,6 +20,7 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
         ServerVersion.AutoDetect(builder.Configuration.GetConnectionString("DefaultConnection"))
     )
 );
+builder.Services.AddHttpClient();
 builder.Services.AddTransient<IImageUploadService, ImgbbImageUploadService>();
 var app = builder.Build();
 
