@@ -1,7 +1,6 @@
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
-using coffee_machine_api.Models;
 using Microsoft.AspNetCore.Mvc;
 using CoffeeMachineAPI.Data;
 using CoffeeMachineAPI.DTOs;
@@ -14,28 +13,29 @@ namespace CoffeeMachineAPI.Controllers;
 [Route("api/[controller]")]
 public class OrdersController : ControllerBase
 {
-    private readonly ApplicationDbContext _context;
-    private readonly HttpClient _httpClient;
+    private readonly ApplicationDbContext _context;  // Andmebaasi kontekst
+    private readonly HttpClient _httpClient;  // HttpClient teenus, et suhelda väliste API-dega
 
-
+    // Konstruktor, et vastu võtta kontekst ja HttpClient teenus
     public OrdersController(ApplicationDbContext context, HttpClient httpClient)
     {
         _context = context;
         _httpClient = httpClient;
-
     }
+
+    // GET: api/orders - Kõikide tellimuste kuvamine
     [HttpGet]
     public async Task<ActionResult<IEnumerable<OrderReadDTO>>> GetAllOrders()
     {
         var orders = await _context.Orders
-            .Include(o => o.User)  
-            .Include(o => o.OrderItems)  
-            .ThenInclude(oi => oi.Drink) 
+            .Include(o => o.User)  // Laadime tellimuse kasutaja andmed
+            .Include(o => o.OrderItems)  // Laadime tellimuse tooteandmed
+            .ThenInclude(oi => oi.Drink)  // Laadime tellimuse toote (joogi) andmed
             .ToListAsync();
 
         if (orders == null || !orders.Any())
         {
-            return NotFound("No orders found.");
+            return NotFound("No orders found.");  // Kui tellimusi pole, tagastame NotFound vastuse
         }
 
         var orderDtos = orders.Select(order => new OrderReadDTO
@@ -43,18 +43,20 @@ public class OrdersController : ControllerBase
             Id = order.Id,
             Date = order.Date,
             Status = order.Status,
-            UserEmail = order.User.Email,
+            UserEmail = order.User.Email,  // Tagastame kasutaja e-posti
             TotalPrice = order.TotalPrice,
             IsPaid = order.IsPaid
         }).ToList();
 
-        return Ok(orderDtos); 
+        return Ok(orderDtos);  // Tagastame tellimused vastusena
     }
+
+    // GET: api/orders/with-items - Kõikide tellimuste kuvamine koos toodete detailidega
     [HttpGet("with-items")]
     public async Task<ActionResult<IEnumerable<OrderWithItemsReadDTO>>> GetAllOrdersWithItems()
     {
         var orders = await _context.Orders
-            .Include(o => o.User)  
+            .Include(o => o.User)  // Laadime tellimuse kasutaja andmed
             .ToListAsync();
 
         if (orders == null || !orders.Any())
@@ -67,9 +69,9 @@ public class OrdersController : ControllerBase
         foreach (var order in orders)
         {
             var orderItems = await _context.OrderItems
-                .Include(oi => oi.Drink)  
-                .Include(oi => oi.CupSize)  
-                .Where(oi => oi.OrderId == order.Id)  
+                .Include(oi => oi.Drink)  // Laadime tellimuse toote andmed
+                .Include(oi => oi.CupSize)  // Laadime ka tassi suuruse andmed
+                .Where(oi => oi.OrderId == order.Id)  // Etsime tellimuse tooted
                 .ToListAsync();
 
             if (orderItems == null || !orderItems.Any())
@@ -77,58 +79,60 @@ public class OrdersController : ControllerBase
                 return NotFound($"No items found for Order ID {order.Id}");
             }
 
+            // Loome DTO tellimuse ja toodete jaoks
             var orderDto = new OrderWithItemsReadDTO
             {
                 Id = order.Id,
                 Date = order.Date,
                 Status = order.Status,
-                UserEmail = order.User?.Email,  
+                UserEmail = order.User?.Email,  // Kasutaja e-post
                 TotalPrice = order.TotalPrice,
                 IsPaid = order.IsPaid,
                 OrderItems = orderItems.Select(oi => new OrderItemReadDTO
                 {
-                    DrinkName = oi.Drink?.Name, 
-                    Quantity = oi.Quantity,
-                    SugarLevel = oi.SugarLevel,
-                    CupSize = oi.CupSize?.Name,  
-                    ItemPrice = (oi.Drink?.Price ?? 0) * oi.Quantity * (oi.CupSize?.Multiplier ?? 1)  
+                    DrinkName = oi.Drink?.Name,  // Joogi nimi
+                    Quantity = oi.Quantity,  // Kogus
+                    SugarLevel = oi.SugarLevel,  // Suhkrutaseme määr
+                    CupSize = oi.CupSize?.Name,  // Tassi suurus
+                    ItemPrice = (oi.Drink?.Price ?? 0) * oi.Quantity * (oi.CupSize?.Multiplier ?? 1)  // Hind
                 }).ToList()
             };
 
-            orderDtos.Add(orderDto);
+            orderDtos.Add(orderDto);  // Lisame tellimuse DTO listi
         }
 
-        return Ok(orderDtos);
+        return Ok(orderDtos);  // Tagastame tellimused koos toodetega
     }
 
-
+    // POST: api/orders - Uue tellimuse algatamine
     [HttpPost]
     public async Task<IActionResult> InitializeOrder(OrderCreateDTO orderDTO)
-        {
+    {
         if (orderDTO == null || !orderDTO.Items.Any())
         {
-            return BadRequest("Invalid order data.");
+            return BadRequest("Invalid order data.");  // Kui tellimus on vale, tagastame BadRequest vastuse
         }
 
         var user = await _context.Users.FindAsync(orderDTO.UserId);
         if (user == null)
         {
-            return NotFound("User not found.");
+            return NotFound("User not found.");  // Kui kasutajat ei leita, tagastame NotFound vastuse
         }
 
         var order = new Order
         {
             UserId = orderDTO.UserId,
-            Status = OrderStatuses.InPayment, 
-            IsPaid = false, 
-            TotalPrice = 0.00m, 
+            Status = OrderStatuses.InPayment,  // Algne tellimuse staatus
+            IsPaid = false,  // Alguses ei ole makstud
+            TotalPrice = 0.00m,  // Algne hind
         };
 
-        _context.Orders.Add(order);
+        _context.Orders.Add(order);  // Lisame tellimuse andmebaasi
         await _context.SaveChangesAsync();
 
         decimal totalPrice = 0;
 
+        // Töötleme tellimuse iga toodet
         foreach (var itemDTO in orderDTO.Items)
         {
             var drink = await _context.Drinks.FindAsync(itemDTO.DrinkId);
@@ -144,7 +148,7 @@ public class OrdersController : ControllerBase
             }
 
             var itemPrice = drink.Price * itemDTO.Quantity * cupSize.Multiplier;
-            totalPrice += itemPrice; 
+            totalPrice += itemPrice;  // Arvutame tellimuse koguhinna
 
             var orderItem = new OrderItem
             {
@@ -155,50 +159,53 @@ public class OrdersController : ControllerBase
                 SugarLevel = itemDTO.SugarLevel
             };
 
-            _context.OrderItems.Add(orderItem);
+            _context.OrderItems.Add(orderItem);  // Lisame tellimuse tooted andmebaasi
         }
 
         order.TotalPrice = totalPrice;
-        _context.Orders.Update(order); 
+        _context.Orders.Update(order);  // Uuendame tellimuse koguhinda
 
+        // Loome makse objekti
         var payment = new Payment
         {
             OrderId = order.Id,
-            Subtotal = totalPrice, 
+            Subtotal = totalPrice,
             Status = PaymentStatuses.Pending,
         };
-        payment.CalculateTotal();
+        payment.CalculateTotal();  // Arvutame kogusumma
 
-        _context.Payments.Add(payment);
-        await _context.SaveChangesAsync(); 
+        _context.Payments.Add(payment);  // Lisame makse andmebaasi
+        await _context.SaveChangesAsync();  // Salvestame muudatused andmebaasi
 
-        var paymentResponse = await GeneratePaymentLink(payment.Total);
+        var paymentResponse = await GeneratePaymentLink(payment.Total);  // Loome makselingi
         if (paymentResponse == null)
         {
             return StatusCode(500, "Failed to generate payment link.");
         }
 
+        // Tagastame loodud tellimuse ja makselingi
         return CreatedAtAction(nameof(GetOrder), new { id = order.Id }, new
         {
             OrderId = order.Id,
-            TotalPrice = order.TotalPrice, 
+            TotalPrice = order.TotalPrice,
             PaymentLink = paymentResponse
         });
     }
+
+    // POST: api/orders/payment/{orderId} - Makse staatuse värskendamine
     [HttpPost("payment/{orderId}")]
     public async Task<IActionResult> UpdatePaymentStatus(int orderId, [FromBody] PaymentResultDTO paymentResultDTO)
     {
-       
         var order = await _context.Orders.FindAsync(orderId);
         if (order == null)
         {
             return NotFound($"Order with ID {orderId} not found.");
         }
         
-        var payment = _context.Payments.OrderByDescending(p => p.Date).FirstOrDefault();
+        var payment = _context.Payments.OrderByDescending(p => p.Date).FirstOrDefault();  // Viimane makse
         payment.Success = paymentResultDTO.Success;
         payment.Status = paymentResultDTO.Status;
-        
+
         if (paymentResultDTO.Success)
         {
             order.IsPaid = true;
@@ -209,6 +216,7 @@ public class OrdersController : ControllerBase
             order.IsPaid = false;
             order.Status = OrderStatuses.PaymentError;
         }
+
         await _context.SaveChangesAsync();
 
         return Ok(new
@@ -219,6 +227,7 @@ public class OrdersController : ControllerBase
         });
     }
 
+    // GET: api/orders/{id} - Ühe tellimuse kuvamine ID järgi
     [HttpGet("{id}")]
     public async Task<ActionResult<OrderReadDTO>> GetOrder(int id)
     {
@@ -243,6 +252,8 @@ public class OrdersController : ControllerBase
             IsPaid = order.IsPaid
         };
     }
+
+    // DELETE: api/orders/{id} - Tellimuse kustutamine
     [HttpDelete("{id}")]
     public async Task<IActionResult> DeleteOrder(int id)
     {
@@ -253,14 +264,15 @@ public class OrdersController : ControllerBase
             return NotFound($"Order with ID {id} not found.");
         }
 
-        _context.OrderItems.RemoveRange(order.OrderItems);
+        _context.OrderItems.RemoveRange(order.OrderItems);  // Kustutame tellimuse tooted
+        _context.Orders.Remove(order);  // Kustutame tellimuse
 
-        _context.Orders.Remove(order);
+        await _context.SaveChangesAsync();  // Salvestame muudatused andmebaasi
 
-        await _context.SaveChangesAsync();
-
-        return NoContent(); 
+        return NoContent();  // Tagastame NoContent vastuse
     }
+
+    // Aitame luua makselinki
     private async Task<string?> GeneratePaymentLink(decimal totalPrice)
     {
         var paymentData = new
