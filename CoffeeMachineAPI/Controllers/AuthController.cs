@@ -11,6 +11,8 @@ using System.Security.Claims;
 using System.Text;
 using System.Threading.Tasks;
 using System.Net.Http.Headers;
+using CoffeeMachineAPI.Services;
+
 
 namespace CoffeeMachineAPI.Controllers
 {
@@ -24,14 +26,17 @@ namespace CoffeeMachineAPI.Controllers
         private readonly string _jwtSecret;
         private readonly string _jwtAudience;
         private readonly string _jwtIssuer;
+        private readonly LoginLogService _loginLogService;
+
 
         // Konstruktor, kus loeme konfigureerimisfailist JWT seotud andmed
-        public AuthController(ApplicationDbContext context, IConfiguration configuration)
+        public AuthController(ApplicationDbContext context, IConfiguration configuration, LoginLogService loginLogService)
         {
             _context = context;
             _jwtSecret = configuration["JwtToken:Secret"];   // JWT saladus
             _jwtAudience = configuration["JwtToken:Audience"]; // JWT sihtgrupp
             _jwtIssuer = configuration["JwtToken:Issuer"];  // JWT väljastaja
+            _loginLogService = loginLogService;
         }
 
         // "register" lõpp-punkti API päring kasutaja registreerimiseks
@@ -64,21 +69,29 @@ namespace CoffeeMachineAPI.Controllers
         [HttpPost("login")]
         public async Task<IActionResult> Login([FromBody] LoginDto loginDto)
         {
+            var ipAddress = HttpContext.Connection.RemoteIpAddress?.MapToIPv4().ToString();            
             // Otsime kasutajat andmebaasist e-posti järgi
             var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == loginDto.Email);
 
             // Kui kasutajat ei leita, tagastame autentimise vea
             if (user == null)
             {
+                await _loginLogService.LogUserLoginAsync(user.Id, ipAddress, false, "password");
                 return Unauthorized("User not found."); // Kui kasutajat ei leita, tagastame vea
+
             }
 
             // Kontrollime parooli õigsust
             if (!user.CheckPassword(loginDto.Password))
             {
+                await _loginLogService.LogUserLoginAsync(user.Id, ipAddress, false, "password");
                 return Unauthorized("Invalid password.");  // Kui parool ei sobi, tagastame vea
-            }
 
+            }
+            
+           
+            // Логируем успешный вход
+            await _loginLogService.LogUserLoginAsync(user.Id, ipAddress, true, "password");
             // Kui kõik on korras, genereerime JWT tokeni
             var token = GenerateJwtToken(user);
 

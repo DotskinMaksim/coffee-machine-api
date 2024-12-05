@@ -40,6 +40,7 @@ builder.Services.AddHttpClient();
 
 // Lisame teenuse IImageUploadService, mis kasutab ImgbbImageUploadService teenust (piltide üleslaadimine Imgbb teenusesse)
 builder.Services.AddTransient<IImageUploadService, ImgbbImageUploadService>();
+builder.Services.AddTransient<LoginLogService, LoginLogService>();
 
 var app = builder.Build(); // Rakenduse ehitamine
 
