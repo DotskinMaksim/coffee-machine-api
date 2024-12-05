@@ -58,8 +58,18 @@ namespace CoffeeMachineAPI.Data
                 CreatedAt = DateTime.Now
             };
             adminUser.SetPassword(adminPassword); // Admini parooli määramine
+            var unknownUser = new User
+            {
+                Id = 1000,
+                Email = "unknown",
+                IsAdmin = false,
+                CreatedAt = DateTime.Now,
+                PasswordHash = string.Empty
+            };
+            modelBuilder.Entity<User>().HasData(adminUser, unknownUser); // Admini lisamine andmebaasi
+            
+           
 
-            modelBuilder.Entity<User>().HasData(adminUser); // Admini lisamine andmebaasi
 
             // Algandmete lisamine jookide tabelisse
             modelBuilder.Entity<Drink>().HasData(
@@ -102,9 +112,11 @@ namespace CoffeeMachineAPI.Data
 
             foreach (var entry in ChangeTracker.Entries())
             {
+                
                 // Vältige auditi logi loomist, kui tegemist on auditi logiga või kui entiteet ei ole muutunud
-                if (entry.Entity is AuditLog || entry.State == EntityState.Detached || entry.State == EntityState.Unchanged)
+                if (entry.Entity is AuditLog || entry.Entity is LoginLog || entry.State == EntityState.Detached || entry.State == EntityState.Unchanged)
                     continue;
+
 
                 // Loome auditi kirje vastavalt muudatuse tüübile (Lisa, Muuda, Kustuta)
                 var auditEntry = new AuditEntry(entry)

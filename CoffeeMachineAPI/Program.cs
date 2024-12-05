@@ -2,18 +2,26 @@ using System.Net.Http.Headers;
 using CoffeeMachineAPI.Controllers;
 using CoffeeMachineAPI.Data;
 using CoffeeMachineAPI.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args); // Rakenduse ehitaja loomine
 
 // Lisa teenused konteinerisse (DI - dependency injection)
+builder.Services.AddDistributedMemoryCache();  
+builder.Services.AddSession(options =>
+{
+    options.IdleTimeout = TimeSpan.FromMinutes(30);
+    options.Cookie.HttpOnly = false;  // Включение HttpOnly для безопасности
+    options.Cookie.SameSite = SameSiteMode.None;  // Разрешить кросс-доменную сессию
+    options.Cookie.SecurePolicy = CookieSecurePolicy.Always;  // Использовать Secure cookies, если HTTPS
+});
 
 builder.Services.AddControllers(); // Lisab kontrollereid (kontrollerid, mis käsitlevad HTTP-päringuid)
 // Lisage OpenAPI konfiguratsioon Swaggeri jaoks
 builder.Services.AddOpenApi();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(); // Swaggeri genereerimine
-
 // Lisame andmebaasi ühenduse (kasutame MySQL-i)
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseMySql(
@@ -54,6 +62,7 @@ if (app.Environment.IsDevelopment()) // Kui arendusrežiimis
 
 // Kasutame CORS poliitikat, et lubada päringud määratud päritolust
 app.UseCors("AllowFrontend");
+app.UseSession();
 
 // Luba HTTPS-i redirekteerimine (kõik HTTP päringud suunatakse automaatselt HTTPS-ile)
 app.UseHttpsRedirection();

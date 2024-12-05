@@ -11,13 +11,13 @@ public class LoginLogService
         _context = context;
     }
 
-    public async Task LogUserLoginAsync(int userId, string ipAddress, bool isSuccess, string loginMethod)
+    public async Task LogUserLoginAsync(int userId, string ipAddress, string result, string loginMethod)
     {
         var userLogin = new LoginLog
         {
             UserId = userId,
             IpAddress = ipAddress,
-            IsSuccess = isSuccess,
+            Result = result,
             LoginMethod = loginMethod
         };
 
