@@ -22,7 +22,6 @@ public class ApplicationDbContext : DbContext
     public DbSet<Location> Locations { get; set; }  // Asukohad
     public DbSet<Machine> Machines { get; set; }  // Masinad
     public DbSet<Order> Orders { get; set; }  // Tellimused
-    public DbSet<OrderItem> OrderItems { get; set; }  // Tellimuse tooted
     public DbSet<Payment> Payments { get; set; }  // Makse
     public DbSet<User> Users { get; set; }  // Kasutajad
     

@@ -1,5 +1,6 @@
 using System;
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 using System.Security.Cryptography;
 using Microsoft.AspNetCore.Cryptography.KeyDerivation;
 using System.Text;
@@ -17,6 +18,9 @@ namespace CoffeeMachineAPI.Models
         public DateTime CreatedAt { get; set; } = DateTime.Now;
 
         public bool IsAdmin { get; set; } = false;
+        
+        [Column(TypeName = "decimal(18,2)")]
+        public decimal BonusBalance { get; set; } = 0.00m;
 
         public void SetPassword(string password)
         {

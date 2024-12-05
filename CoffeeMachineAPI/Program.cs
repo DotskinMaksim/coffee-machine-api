@@ -28,7 +28,7 @@ builder.Services.AddCors(options =>
     options.AddPolicy("AllowFrontend", // Poliitika nimeks on "AllowFrontend"
         policy =>
         {
-            policy.WithOrigins("http://localhost:3000") // Lubame päringud ainult määratud päritolu aadressilt (nt React frontend)
+            policy.WithOrigins("http://localhost:5001") // Lubame päringud ainult määratud päritolu aadressilt (nt React frontend)
                 .AllowAnyHeader() // Lubame kõik päised
                 .AllowAnyMethod() // Lubame kõik HTTP meetodid (GET, POST, PUT, DELETE jne)
                 .AllowCredentials(); // Lubame küpsiste saatmise koos päringutega (väga oluline autentimise puhul)

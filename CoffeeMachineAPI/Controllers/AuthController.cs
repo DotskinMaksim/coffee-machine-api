@@ -83,8 +83,7 @@ namespace CoffeeMachineAPI.Controllers
             var token = GenerateJwtToken(user);
 
             // Tagastame kasutajale JWT tokeni
-            return Ok(new { Token = token });
-        }
+            return Ok(new { Token = token, UserId = user.Id, IsAdmin = user.IsAdmin, BonusBalance = user.BonusBalance });        }
 
         // Meetod JWT tokeni genereerimiseks
         private string GenerateJwtToken(User user)

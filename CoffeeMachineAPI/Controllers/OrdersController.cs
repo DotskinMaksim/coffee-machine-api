@@ -28,11 +28,11 @@ public class OrdersController : ControllerBase
     public async Task<ActionResult<IEnumerable<OrderReadDTO>>> GetAllOrders()
     {
         var orders = await _context.Orders
-            .Include(o => o.User)  // Laadime tellimuse kasutaja andmed
-            .Include(o => o.OrderItems)  // Laadime tellimuse tooteandmed
-            .ThenInclude(oi => oi.Drink)  // Laadime tellimuse toote (joogi) andmed
+            .Include(o => o.User)
+            .Include(o => o.Drink)
+            .Include(o => o.CupSize) 
             .ToListAsync();
-
+        
         if (orders == null || !orders.Any())
         {
             return NotFound("No orders found.");  // Kui tellimusi pole, tagastame NotFound vastuse
@@ -43,7 +43,11 @@ public class OrdersController : ControllerBase
             Id = order.Id,
             Date = order.Date,
             Status = order.Status,
-            UserEmail = order.User.Email,  // Tagastame kasutaja e-posti
+            UserEmail = order.User.Email,
+            DrinkName = order.Drink.Name,
+            SugarLevel = order.SugarLevel,
+            Quantity = order.Quantity,
+            CupSize = order.CupSize.Code,
             TotalPrice = order.TotalPrice,
             IsPaid = order.IsPaid
         }).ToList();
@@ -51,64 +55,11 @@ public class OrdersController : ControllerBase
         return Ok(orderDtos);  // Tagastame tellimused vastusena
     }
 
-    // GET: api/orders/with-items - Kõikide tellimuste kuvamine koos toodete detailidega
-    [HttpGet("with-items")]
-    public async Task<ActionResult<IEnumerable<OrderWithItemsReadDTO>>> GetAllOrdersWithItems()
-    {
-        var orders = await _context.Orders
-            .Include(o => o.User)  // Laadime tellimuse kasutaja andmed
-            .ToListAsync();
-
-        if (orders == null || !orders.Any())
-        {
-            return NotFound("No orders found.");
-        }
-
-        var orderDtos = new List<OrderWithItemsReadDTO>();
-
-        foreach (var order in orders)
-        {
-            var orderItems = await _context.OrderItems
-                .Include(oi => oi.Drink)  // Laadime tellimuse toote andmed
-                .Include(oi => oi.CupSize)  // Laadime ka tassi suuruse andmed
-                .Where(oi => oi.OrderId == order.Id)  // Etsime tellimuse tooted
-                .ToListAsync();
-
-            if (orderItems == null || !orderItems.Any())
-            {
-                return NotFound($"No items found for Order ID {order.Id}");
-            }
-
-            // Loome DTO tellimuse ja toodete jaoks
-            var orderDto = new OrderWithItemsReadDTO
-            {
-                Id = order.Id,
-                Date = order.Date,
-                Status = order.Status,
-                UserEmail = order.User?.Email,  // Kasutaja e-post
-                TotalPrice = order.TotalPrice,
-                IsPaid = order.IsPaid,
-                OrderItems = orderItems.Select(oi => new OrderItemReadDTO
-                {
-                    DrinkName = oi.Drink?.Name,  // Joogi nimi
-                    Quantity = oi.Quantity,  // Kogus
-                    SugarLevel = oi.SugarLevel,  // Suhkrutaseme määr
-                    CupSize = oi.CupSize?.Name,  // Tassi suurus
-                    ItemPrice = (oi.Drink?.Price ?? 0) * oi.Quantity * (oi.CupSize?.Multiplier ?? 1)  // Hind
-                }).ToList()
-            };
-
-            orderDtos.Add(orderDto);  // Lisame tellimuse DTO listi
-        }
-
-        return Ok(orderDtos);  // Tagastame tellimused koos toodetega
-    }
-
     // POST: api/orders - Uue tellimuse algatamine
     [HttpPost]
     public async Task<IActionResult> InitializeOrder(OrderCreateDTO orderDTO)
     {
-        if (orderDTO == null || !orderDTO.Items.Any())
+        if (orderDTO == null)
         {
             return BadRequest("Invalid order data.");  // Kui tellimus on vale, tagastame BadRequest vastuse
         }
@@ -118,53 +69,25 @@ public class OrdersController : ControllerBase
         {
             return NotFound("User not found.");  // Kui kasutajat ei leita, tagastame NotFound vastuse
         }
+        var drink = await _context.Drinks.FindAsync(orderDTO.DrinkId);
+        var cupSize = await _context.CupSizes.FindAsync(orderDTO.CupSizeId);
+        
+        decimal totalPrice = drink.Price * orderDTO.Quantity * cupSize.Multiplier;
 
         var order = new Order
         {
             UserId = orderDTO.UserId,
-            Status = OrderStatuses.InPayment,  // Algne tellimuse staatus
-            IsPaid = false,  // Alguses ei ole makstud
-            TotalPrice = 0.00m,  // Algne hind
+            Status = OrderStatuses.InPayment, 
+            TotalPrice = totalPrice,
+            SugarLevel = orderDTO.SugarLevel,
+            Quantity = orderDTO.Quantity,
+            CupSizeId = orderDTO.CupSizeId,
+            DrinkId = orderDTO.DrinkId, 
         };
 
         _context.Orders.Add(order);  // Lisame tellimuse andmebaasi
         await _context.SaveChangesAsync();
-
-        decimal totalPrice = 0;
-
-        // Töötleme tellimuse iga toodet
-        foreach (var itemDTO in orderDTO.Items)
-        {
-            var drink = await _context.Drinks.FindAsync(itemDTO.DrinkId);
-            if (drink == null)
-            {
-                return BadRequest($"Drink with ID {itemDTO.DrinkId} not found.");
-            }
-
-            var cupSize = await _context.CupSizes.FindAsync(itemDTO.CupSizeId);
-            if (cupSize == null)
-            {
-                return BadRequest($"Cup size with ID {itemDTO.CupSizeId} not found.");
-            }
-
-            var itemPrice = drink.Price * itemDTO.Quantity * cupSize.Multiplier;
-            totalPrice += itemPrice;  // Arvutame tellimuse koguhinna
-
-            var orderItem = new OrderItem
-            {
-                OrderId = order.Id,
-                DrinkId = itemDTO.DrinkId,
-                CupSizeId = itemDTO.CupSizeId,
-                Quantity = itemDTO.Quantity,
-                SugarLevel = itemDTO.SugarLevel
-            };
-
-            _context.OrderItems.Add(orderItem);  // Lisame tellimuse tooted andmebaasi
-        }
-
-        order.TotalPrice = totalPrice;
-        _context.Orders.Update(order);  // Uuendame tellimuse koguhinda
-
+        
         // Loome makse objekti
         var payment = new Payment
         {
@@ -196,7 +119,9 @@ public class OrdersController : ControllerBase
     [HttpPost("payment/{orderId}")]
     public async Task<IActionResult> UpdatePaymentStatus(int orderId, [FromBody] PaymentResultDTO paymentResultDTO)
     {
-        var order = await _context.Orders.FindAsync(orderId);
+        var order = await _context.Orders
+            .Include(o => o.User)  // Загружаем связанную сущность User
+            .FirstOrDefaultAsync(o => o.Id == orderId);
         if (order == null)
         {
             return NotFound($"Order with ID {orderId} not found.");
@@ -216,6 +141,8 @@ public class OrdersController : ControllerBase
             order.IsPaid = false;
             order.Status = OrderStatuses.PaymentError;
         }
+        
+        order.User.BonusBalance += order.TotalPrice*0.05m;
 
         await _context.SaveChangesAsync();
 
@@ -233,8 +160,8 @@ public class OrdersController : ControllerBase
     {
         var order = await _context.Orders
             .Include(o => o.User)
-            .Include(o => o.OrderItems)
-            .ThenInclude(oi => oi.Drink)
+            .Include(o => o.Drink)
+            .Include(o => o.CupSize)
             .FirstOrDefaultAsync(o => o.Id == id);
 
         if (order == null)
@@ -249,7 +176,11 @@ public class OrdersController : ControllerBase
             Status = order.Status,
             UserEmail = order.User.Email,
             TotalPrice = order.TotalPrice,
-            IsPaid = order.IsPaid
+            IsPaid = order.IsPaid,
+            Quantity = order.Quantity,
+            SugarLevel = order.SugarLevel,
+            DrinkName = order.Drink.Name,
+            CupSize = order.CupSize.Code,
         };
     }
 
@@ -257,14 +188,13 @@ public class OrdersController : ControllerBase
     [HttpDelete("{id}")]
     public async Task<IActionResult> DeleteOrder(int id)
     {
-        var order = await _context.Orders.Include(o => o.OrderItems).FirstOrDefaultAsync(o => o.Id == id);
+        var order = await _context.Orders.FirstOrDefaultAsync(o => o.Id == id);
         
         if (order == null)
         {
             return NotFound($"Order with ID {id} not found.");
         }
 
-        _context.OrderItems.RemoveRange(order.OrderItems);  // Kustutame tellimuse tooted
         _context.Orders.Remove(order);  // Kustutame tellimuse
 
         await _context.SaveChangesAsync();  // Salvestame muudatused andmebaasi

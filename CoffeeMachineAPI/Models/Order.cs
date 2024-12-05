@@ -10,17 +10,27 @@ public class Order
     public DateTime Date { get; set; } = DateTime.Now;
 
     public string Status { get; set; }
+    
+    public int SugarLevel { get; set; }
+
+    public int Quantity { get; set; }
+    
+    [ForeignKey("CupSize")]
+    public int CupSizeId { get; set; }
+    public CupSize CupSize { get; set; }
 
     [ForeignKey("User")]
     public int UserId { get; set; }
     public User User { get; set; }
+    
+    [ForeignKey("Drink")]
+    public int DrinkId { get; set; }
+    public Drink Drink { get; set; }
 
     
     [Column(TypeName = "decimal(18,2)")]
     public decimal TotalPrice { get; set; }
 
-    public bool IsPaid { get; set; }
+    public bool IsPaid { get; set; } = false;
     
-    public List<OrderItem> OrderItems { get; set; } = new List<OrderItem>();
-
 }

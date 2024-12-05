@@ -26,7 +26,7 @@ namespace CoffeeMachineAPI.Controllers
 
         // GET: api/drinks - Kõikide jookide kuvamine, toetab lehe suuruse määramist
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<DrinkReadDTO>>> GetDrinks([FromQuery] int? page, [FromQuery] int? pageSize)
+        public async Task<ActionResult<IEnumerable<DrinkReadDTO>>> GetDrinks([FromQuery] int? page, [FromQuery] int? pageSize, [FromQuery] bool isLogged,  [FromQuery] bool isAdmin)
         {
             IQueryable<Drink> query = _context.Drinks;
 
@@ -37,15 +37,24 @@ namespace CoffeeMachineAPI.Controllers
             }
 
             var drinks = await query.ToListAsync();
-
+            
             // Muudame joogid DTO-deks (Data Transfer Objects), et need oleksid API kaudu tagastatud
             var drinkDTOs = drinks.Select(drink => new DrinkReadDTO
             {
                 Id = drink.Id,
                 Name = drink.Name,
                 Description = drink.Description,
-                ImageUrl = drink.ImageUrl
+                ImageUrl = drink.ImageUrl,
+                Price = drink.Price,
             }).ToList();
+            if (isLogged && !isAdmin)
+            {
+                foreach (var drinkDTO in drinkDTOs)
+                {
+                    drinkDTO.Price *= 0.8m;  
+                }
+            }
+
 
             // Tagastame kõik joogid vastusena
             return Ok(drinkDTOs);
@@ -69,7 +78,8 @@ namespace CoffeeMachineAPI.Controllers
                 Id = drink.Id,
                 Name = drink.Name,
                 Description = drink.Description,
-                ImageUrl = drink.ImageUrl
+                ImageUrl = drink.ImageUrl,
+                Price = drink.Price,
             };
 
             return Ok(drinkDTO);
@@ -102,7 +112,8 @@ namespace CoffeeMachineAPI.Controllers
             {
                 Name = model.Name,
                 Description = model.Description,
-                ImageUrl = imageUrl
+                ImageUrl = imageUrl,
+                Price = model.Price
             };
 
             _context.Drinks.Add(drink);
@@ -114,7 +125,8 @@ namespace CoffeeMachineAPI.Controllers
                 Id = drink.Id,
                 Name = drink.Name,
                 Description = drink.Description,
-                ImageUrl = drink.ImageUrl
+                ImageUrl = drink.ImageUrl,
+                Price = drink.Price
             };
 
             return CreatedAtAction(nameof(GetDrink), new { id = drink.Id }, drinkDTO);
@@ -134,6 +146,7 @@ namespace CoffeeMachineAPI.Controllers
             // Värskendame joogi nime ja kirjeldust
             drink.Name = model.Name;
             drink.Description = model.Description;
+            drink.Price = model.Price;
 
             _context.Entry(drink).State = EntityState.Modified;
 
