@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using ZstdSharp.Unsafe;
 
 namespace CoffeeMachineAPI.Models;
 
@@ -17,5 +18,8 @@ public class Drink
     public string ImageUrl { get; set; }
 
 
-    
+    public decimal GetPriceWithClientDiscount()
+    {
+        return Price * 0.8m;
+    }
 }

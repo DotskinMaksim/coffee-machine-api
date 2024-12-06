@@ -57,28 +57,47 @@ public class OrdersController : ControllerBase
 
     // POST: api/orders - Uue tellimuse algatamine
     [HttpPost]
-    public async Task<IActionResult> InitializeOrder(OrderCreateDTO orderDTO)
+    public async Task<IActionResult> InitializeOrder(OrderCreateDTO orderDTO, bool isLoggedIn)
     {
         if (orderDTO == null)
         {
             return BadRequest("Invalid order data.");  // Kui tellimus on vale, tagastame BadRequest vastuse
         }
 
-        var user = await _context.Users.FindAsync(orderDTO.UserId);
-        if (user == null)
+        User user;
+        if (!isLoggedIn)
         {
-            return NotFound("User not found.");  // Kui kasutajat ei leita, tagastame NotFound vastuse
-        }
-        var drink = await _context.Drinks.FindAsync(orderDTO.DrinkId);
-        var cupSize = await _context.CupSizes.FindAsync(orderDTO.CupSizeId);
-        
-        decimal totalPrice = drink.Price * orderDTO.Quantity * cupSize.Multiplier;
+            user = await _context.Users.FindAsync(SystemUserIds.GuestUser);
 
+        }
+        else
+        {
+            user = await _context.Users.FindAsync(orderDTO.UserId);
+            if (user == null)
+            {
+                return NotFound("User not found.");  // Kui kasutajat ei leita, tagastame NotFound vastuse
+            }
+        }
+
+       
+        var drink = await _context.Drinks.FindAsync(orderDTO.DrinkId);
+
+        decimal price = drink.Price;
+        
+        var cupSize = await _context.CupSizes.FindAsync(orderDTO.CupSizeId);
+        if (isLoggedIn)
+        {
+            price *= ClientDiscount.Value;
+        }
+        
+        price *= cupSize.Multiplier;
+        price *= orderDTO.Quantity;
+        
         var order = new Order
         {
-            UserId = orderDTO.UserId,
+            UserId = user.Id,
             Status = OrderStatuses.InPayment, 
-            TotalPrice = totalPrice,
+            TotalPrice = price,
             SugarLevel = orderDTO.SugarLevel,
             Quantity = orderDTO.Quantity,
             CupSizeId = orderDTO.CupSizeId,
@@ -87,16 +106,22 @@ public class OrdersController : ControllerBase
 
         _context.Orders.Add(order);  // Lisame tellimuse andmebaasi
         await _context.SaveChangesAsync();
-        
+       
         // Loome makse objekti
         var payment = new Payment
         {
             OrderId = order.Id,
-            Subtotal = totalPrice,
+            Subtotal = price,
             Status = PaymentStatuses.Pending,
         };
         payment.CalculateTotal();  // Arvutame kogusumma
-
+        
+        if (orderDTO.UseBalance && user.BonusBalance > 0)
+        {
+            decimal bonusToUse = user.BonusBalance >= price ? price : user.BonusBalance;
+            payment.Total -= bonusToUse;
+            payment.IsUsedBonus = true;
+        }
         _context.Payments.Add(payment);  // Lisame makse andmebaasi
         await _context.SaveChangesAsync();  // Salvestame muudatused andmebaasi
 
@@ -116,8 +141,8 @@ public class OrdersController : ControllerBase
     }
 
     // POST: api/orders/payment/{orderId} - Makse staatuse värskendamine
-    [HttpPost("payment/{orderId}")]
-    public async Task<IActionResult> UpdatePaymentStatus(int orderId, [FromBody] PaymentResultDTO paymentResultDTO)
+    [HttpPost("confirm/{orderId}")]
+    public async Task<IActionResult> ConfirmOrder(int orderId, [FromBody] PaymentResultDTO paymentResultDTO)
     {
         var order = await _context.Orders
             .Include(o => o.User)  // Загружаем связанную сущность User
@@ -129,12 +154,19 @@ public class OrdersController : ControllerBase
         
         var payment = _context.Payments.OrderByDescending(p => p.Date).FirstOrDefault();  // Viimane makse
         payment.Success = paymentResultDTO.Success;
-        payment.Status = paymentResultDTO.Status;
+        payment.Status = paymentResultDTO.PaymentStatus;
 
         if (paymentResultDTO.Success)
         {
             order.IsPaid = true;
             order.Status = OrderStatuses.Processing;
+            if (payment.IsUsedBonus)
+            {
+                decimal bonusToUse = order.User.BonusBalance >= payment.Total ? payment.Total : order.User.BonusBalance;
+                order.User.BonusBalance -= bonusToUse;
+                if (order.User.BonusBalance < 0) order.User.BonusBalance = 0;
+            }
+            order.User.BonusBalance += order.TotalPrice * BonusRate.Value;
         }
         else
         {
@@ -142,7 +174,6 @@ public class OrdersController : ControllerBase
             order.Status = OrderStatuses.PaymentError;
         }
         
-        order.User.BonusBalance += order.TotalPrice*0.05m;
 
         await _context.SaveChangesAsync();
 

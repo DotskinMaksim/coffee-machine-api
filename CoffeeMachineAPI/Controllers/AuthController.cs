@@ -84,7 +84,7 @@ namespace CoffeeMachineAPI.Controllers
             if (user == null)
             {
                 string error = "User not found.";
-                await _loginLogService.LogUserLoginAsync(1000, ipAddress, error, "password");
+                await _loginLogService.LogUserLoginAsync(SystemUserIds.UnknownUser, ipAddress, error, "password");
                 return Unauthorized(error); // Kui kasutajat ei leita, tagastame vea
             }
 

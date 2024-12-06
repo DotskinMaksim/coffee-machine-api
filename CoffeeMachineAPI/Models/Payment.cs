@@ -1,16 +1,17 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using CoffeeMachineAPI.Data;
+
 namespace CoffeeMachineAPI.Models;
 
 public class Payment
 {
     public int Id { get; set; }
 
-    private const decimal VATRate = 0.20m;
     
     [Column(TypeName = "decimal(18,2)")]
     public decimal Subtotal { get;  set; }
-    public decimal VATAmount => Subtotal * VATRate;
+    public decimal VATAmount => Subtotal * VATRate.Value;
     
     [Column(TypeName = "decimal(18,2)")]
     public decimal Total { get; set; }
@@ -24,8 +25,10 @@ public class Payment
     public int OrderId { get; set; }
     public Order Order { get; set; }
     
+    public bool IsUsedBonus { get; set; } = false;
+    
     public void CalculateTotal()
     {
-        this.Total = Subtotal + (Subtotal * VATRate);
+        this.Total = Subtotal + (Subtotal * VATRate.Value);
     }
 }

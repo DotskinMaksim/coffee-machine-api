@@ -41,18 +41,14 @@ namespace CoffeeMachineAPI.Data
             base.OnModelCreating(modelBuilder); // Põhiloogika kutsumine
 
             // Algandmete lisamine tabelitesse
-            modelBuilder.Entity<CupSize>().HasData(
-                new CupSize { Id = 1, Name = "Small", Code = 'S', VolumeInMl = 250, Multiplier = 1.00m },
-                new CupSize { Id = 2, Name = "Medium", Code = 'M', VolumeInMl = 400, Multiplier = 1.50m },
-                new CupSize { Id = 3, Name = "Large", Code = 'L', VolumeInMl = 500, Multiplier = 2.00m }
-            );
+            modelBuilder.Entity<CupSize>().HasData(Cups.Sizes);
 
             // Administraatori lisamine süsteemi konfiguratsiooni kaudu
             var adminEmail = _configuration["Admin:email"];
             var adminPassword = _configuration["Admin:password"];
             var adminUser = new User
             {
-                Id = 1,
+                Id = SystemUserIds.AdminUser,
                 Email = adminEmail,
                 IsAdmin = true,
                 CreatedAt = DateTime.Now
@@ -60,13 +56,21 @@ namespace CoffeeMachineAPI.Data
             adminUser.SetPassword(adminPassword); // Admini parooli määramine
             var unknownUser = new User
             {
-                Id = 1000,
+                Id = SystemUserIds.UnknownUser,
                 Email = "unknown",
                 IsAdmin = false,
                 CreatedAt = DateTime.Now,
                 PasswordHash = string.Empty
             };
-            modelBuilder.Entity<User>().HasData(adminUser, unknownUser); // Admini lisamine andmebaasi
+            var guestUser = new User
+            {
+                Id = SystemUserIds.GuestUser,
+                Email = "guest",
+                IsAdmin = false,
+                CreatedAt = DateTime.Now,
+                PasswordHash = string.Empty
+            };
+            modelBuilder.Entity<User>().HasData(adminUser, unknownUser, guestUser); // Admini lisamine andmebaasi
             
            
 

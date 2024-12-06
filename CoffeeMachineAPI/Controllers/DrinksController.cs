@@ -51,10 +51,13 @@ namespace CoffeeMachineAPI.Controllers
             {
                 foreach (var drinkDTO in drinkDTOs)
                 {
-                    drinkDTO.Price *= 0.8m;  
+                    drinkDTO.Price *= ClientDiscount.Value;  
                 }
             }
-
+            foreach (var drinkDTO in drinkDTOs)
+            {
+                drinkDTO.Price += drinkDTO.Price * VATRate.Value;  
+            }
 
             // Tagastame kõik joogid vastusena
             return Ok(drinkDTOs);
@@ -186,6 +189,27 @@ namespace CoffeeMachineAPI.Controllers
             await _context.SaveChangesAsync();
 
             return NoContent();  // Tagastame No Content, kuna jook on kustutatud
+        }
+
+        [HttpGet("GetCupSizes")]
+        public async Task<ActionResult<List<CupSize>>> GetCupSizes()
+        {
+            var cupSizes = await _context.CupSizes.ToListAsync();
+            return Ok(cupSizes);  
+        }
+
+        // Пример получения минимального и максимального значения сахара
+        [HttpGet("GetSugarScale")]
+        public ActionResult<object> GetSugarScale()
+        {
+            // Допустим, это значения, которые вы хотите вернуть
+            var sugarScale = new 
+            {
+                Min = SugarScale.Min,
+                Max = SugarScale.Max
+            };
+            
+            return Ok(sugarScale);  // Возвращаем минимальное и максимальное значение шкалы сахара
         }
 
         // Abimeetod kontrollimaks, kas jook eksisteerib andmebaasis
